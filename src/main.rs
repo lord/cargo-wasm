@@ -1,6 +1,7 @@
 extern crate tempdir;
 extern crate term;
 extern crate regex;
+extern crate curl;
 
 use std::process::{Command, exit, Stdio};
 use std::fs::File;
@@ -11,13 +12,16 @@ use std::ffi::OsStr;
 
 use tempdir::TempDir;
 use regex::Regex;
+use curl::easy::Easy;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 fn print_prefix() {
     let mut t = term::stderr().unwrap();
-    t.fg(term::color::GREEN).unwrap();
-    write!(t, "  Setup wasm").unwrap();
+    let _ = t.fg(term::color::GREEN);
+    let _ = t.attr(term::Attr::Bold);
+    write!(t, "  Setup wasm ").unwrap();
+    t.reset().unwrap();
 }
 
 const HELP_STRING: &str = r#"Run cargo commands with the correct emscripten environment
@@ -35,44 +39,17 @@ version of emcc."#;
 const EMSDK_URL: &str =
     "https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz";
 
-fn check_cmake_installed() {
-    if let Err(e) = Command::new("cmake").args(&["--version"]).output() {
-        if let std::io::ErrorKind::NotFound = e.kind() {
-            if cfg!(target_os = "linux") {
-                print_prefix();
-                eprintln!("`cmake` not found. Try installing with `sudo apt-get install cmake` and rebuilding?");
-            } else if cfg!(target_os = "macos") {
-                print_prefix();
-                eprintln!("`cmake` not found. Try installing with `brew install cmake` and rebuilding?");
-            } else if cfg!(target_os = "windows") {
-                print_prefix();
-                eprintln!("`cmake` not found. Try installing from https://cmake.org/download/ and rebuilding?");
-            } else {
-                print_prefix();
-                eprintln!("`cmake` not found. Try installing and rebuilding?");
-            }
-        } else {
-            print_prefix();
-            eprintln!("Unknown error when checking installation of `cmake`: {:?}", e);
-        }
-        exit(1);
-    }
-}
+const EMSDK_WINDOWS_URL: &str =
+    "https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable-64bit.zip";
 
-fn check_installation(cmd: &str, arg: &str, fail_msg: &str) -> bool {
-    false
-}
-
-fn check_rustup_installed() {
-    print_prefix();
-    eprintln!("checking for wasm32 rustup target...");
-    if let Err(e) = Command::new("rustup").args(&["target", "add", "wasm32-unknown-emscripten"]).output() {
+fn check_installation(cmd: &str, args: &[&str], fail_msg: &str) {
+    if let Err(e) = Command::new(cmd).args(args).output() {
         if let std::io::ErrorKind::NotFound = e.kind() {
             print_prefix();
-            eprintln!("rustup installation not found. Try installing from https://rustup.rs");
+            eprintln!("{}", fail_msg);
         } else {
             print_prefix();
-            eprintln!("Unknown error when checking rustup installation: {:?}", e);
+            eprintln!("An unknown error occurred when checking for build dependencies.");
         }
         exit(1);
     }
@@ -87,21 +64,34 @@ fn check_emsdk_install(target_dir: &std::path::PathBuf) -> bool {
 
 fn install_emsdk(target_dir: &std::path::PathBuf) {
     let _ = std::fs::create_dir(target_dir.clone());
-    let cmd = Command::new("curl")
-        .args(&[EMSDK_URL])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap_or_else(|e| { panic!("failed to execute curl: {}", e) });
-    Command::new("tar").args(&["--strip-components=1", "-zxvf", "-"])
-        .stdin(cmd.stdout.unwrap_or_else(|| { panic!("failed to get curl output.") }))
+    let mut emsdk_data = Vec::new();
+    {
+        let mut easy = Easy::new();
+        if cfg!(target_os = "windows") {
+            easy.url(EMSDK_WINDOWS_URL).unwrap();
+        } else {
+            easy.url(EMSDK_URL).unwrap();
+        }
+       let mut transfer = easy.transfer();
+       transfer.write_function(|data| {
+            emsdk_data.extend_from_slice(data);
+            Ok(data.len())
+       }).unwrap();
+       transfer.perform().unwrap();
+    }
+    let mut child = Command::new("tar").args(&["--strip-components=1", "-zxvf", "-"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
         .current_dir(target_dir)
-        .output()
+        .spawn()
         .unwrap_or_else(|e| { panic!("failed to execute tar: {}", e) });
+
+    child.stdin.as_mut().unwrap().write_all(&emsdk_data).unwrap();
+    child.wait_with_output().unwrap();
 }
 
 fn get_env(emsdk_path: &std::path::PathBuf) -> BTreeMap<String, String> {
-    print_prefix();
     let temp_dir = TempDir::new("cargo-wasmnow").unwrap_or_else(|_| { panic!("failed to create temp directory") });
     let re = Regex::new(r#"^export ([a-zA-Z0-9_\-]+)="(.*)""#).unwrap();
     Command::new(emsdk_path).args(&["construct_env"])
@@ -121,8 +111,34 @@ fn get_env(emsdk_path: &std::path::PathBuf) -> BTreeMap<String, String> {
     res
 }
 
+fn check_dependencies() {
+    if cfg!(target_os = "macos") {
+        check_installation("cmake",
+            &["--version"],
+            "cmake not found. Try installing with `brew install cmake` and rerunning?");
+    } else if cfg!(target_os = "windows") {
+        check_installation("cmake",
+            &["--version"],
+            "cmake not found. Try installing with `brew install cmake` and rerunning?");
+    } else {
+        check_installation("gcc",
+            &["--version"],
+            "gcc not found. Try installing with `sudo apt-get install build-essential` and rerunning?");
+        check_installation("cmake",
+            &["--version"],
+            "gcc not found. Try installing with `sudo apt-get install cmake` and rerunning?");
+        check_installation("nodejs",
+            &["--version"],
+            "nodejs not found. Try installing with `sudo apt-get install nodejs` and rerunning?");
+    }
+}
+
 // returns env needed to use emcc
 fn ensure_installed() -> BTreeMap<String, String> {
+    check_installation("rustup",
+        &["target", "add", "wasm32-unknown-emscripten"],
+        "rustup installation not found. Try installing from https://rustup.rs and rerunning?");
+
     // check if just already in path and working
     if let Ok(_) = Command::new("emcc").args(&["--version"]).output() {
         print_prefix();
@@ -131,8 +147,7 @@ fn ensure_installed() -> BTreeMap<String, String> {
     }
 
     // install emsdk if necessary, and then see if we can just use the env vars to get an emcc
-    check_cmake_installed();
-    print_prefix();
+    check_dependencies();
     let mut target_dir = std::env::home_dir().unwrap_or_else(|| { panic!("failed to get home directory") });
     target_dir.push(".emsdk");
     let mut emsdk_path = target_dir.clone();
@@ -196,7 +211,6 @@ fn main() {
             exit(0);
         },
         Some(subcommand) => {
-            check_rustup_installed();
             let env = ensure_installed();
             let mut cmd_builder = Command::new("cargo");
             cmd_builder.args(args);

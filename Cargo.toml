@@ -10,4 +10,5 @@ repository = "https://github.com/lord/cargo-wasm"
 tempdir = "0.3"
 regex = "0.2"
 term = "0.4.6"
+curl = "0.4.8"
 
