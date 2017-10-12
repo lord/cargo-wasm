@@ -6,10 +6,13 @@
   <a href="https://docs.rs/cargo-wasm"><img src="https://img.shields.io/badge/docs.rs-visit-brightgreen.svg" alt="Documentation"></a>
 </p>
 
-## Usage
+```sh
+# Install
+cargo install cargo-wasm
 
-    cargo install cargo-wasm
-    cargo wasm build --target=wasm32-unknown-emscripten
-    cargo wasm <insert cargo subcommand here>
+# Usage
+cargo wasm <insert cargo subcommand here>
+```
 
-Running `cargo wasm` will automatically install the Emscripten compiler and set up the correct environment variables on macOS and Linux.
+`cargo wasm` is a quick hack to ensure Emscripten is set up properly when running cargo commands. Running `cargo wasm build` automatically installs Emscripten if `emcc` is not already present, sets up the correct environment variables for the compiler, and then runs `cargo build --target=wasm32-unknown-emscripten`.
+
