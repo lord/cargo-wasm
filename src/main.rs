@@ -113,23 +113,33 @@ fn install_emsdk(target_dir: &std::path::PathBuf) {
 }
 
 fn get_env(emsdk_path: &std::path::PathBuf) -> BTreeMap<String, String> {
-    let temp_dir = TempDir::new("cargo-wasmnow").unwrap_or_else(|_| { panic!("failed to create temp directory") });
-    let re = Regex::new(r#"^export ([a-zA-Z0-9_\-]+)="(.*)""#).unwrap();
-    Command::new(emsdk_path).args(&["construct_env"])
-        .current_dir(&temp_dir)
-        .output()
-        .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
-    let mut env_file = temp_dir.into_path();
-    env_file.push("emsdk_set_env.sh");
-    let mut contents = String::new();
-    let _ = File::open(env_file).unwrap().read_to_string(&mut contents).unwrap();
-    let env_lines: Vec<&str> = contents.split("\n").filter(|line| line.len() > 0).collect();
-    let mut res = BTreeMap::new();
-    for line in env_lines {
-        let caps = re.captures(line).unwrap();
-        res.insert(caps[1].to_string(), caps[2].to_string());
+    if cfg!(target_os = "windows") {
+        let mut newpath = emsdk_path.clone();
+        newpath.pop();
+        newpath.push("emsdk_env.bat");
+        Command::new(emsdk_path).output()
+            .unwrap_or_else(|e| panic!("failed to get emsdk env: {}", e))
+
+        BTreeMap::new()
+    } else {
+        let temp_dir = TempDir::new("cargo-wasmnow").unwrap_or_else(|_| { panic!("failed to create temp directory") });
+        let re = Regex::new(r#"^export ([a-zA-Z0-9_\-]+)="(.*)""#).unwrap();
+        Command::new(emsdk_path).args(&["construct_env"])
+            .current_dir(&temp_dir)
+            .output()
+            .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
+        let mut env_file = temp_dir.into_path();
+        env_file.push("emsdk_set_env.sh");
+        let mut contents = String::new();
+        let _ = File::open(env_file).unwrap().read_to_string(&mut contents).unwrap();
+        let env_lines: Vec<&str> = contents.split("\n").filter(|line| line.len() > 0).collect();
+        let mut res = BTreeMap::new();
+        for line in env_lines {
+            let caps = re.captures(line).unwrap();
+            res.insert(caps[1].to_string(), caps[2].to_string());
+        }
+        res
     }
-    res
 }
 
 fn check_dependencies() {
