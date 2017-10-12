@@ -55,9 +55,8 @@ fn check_installation(cmd: &str, args: &[&str], fail_msg: &str) {
     }
 }
 
-fn check_emsdk_install(target_dir: &std::path::PathBuf) -> bool {
-    Command::new("./emsdk").args(&["--help"])
-        .current_dir(&target_dir)
+fn check_emsdk_install(emsdk_path: &std::path::PathBuf) -> bool {
+    Command::new(emsdk_path).args(&["--help"])
         .output()
         .is_ok()
 }
@@ -113,20 +112,10 @@ fn install_emsdk(target_dir: &std::path::PathBuf) {
     }
 }
 
-fn emsdk_cmd(emsdk_path: &std::path::PathBuf) -> Command {
-    if cfg!(target_os = "windows") {
-        let mut cmd = Command::new("call");
-        cmd.arg(format!("{}", emsdk_path.display()));
-        cmd
-    } else {
-        Command::new(emsdk_path)
-    }
-}
-
 fn get_env(emsdk_path: &std::path::PathBuf) -> BTreeMap<String, String> {
     let temp_dir = TempDir::new("cargo-wasmnow").unwrap_or_else(|_| { panic!("failed to create temp directory") });
     let re = Regex::new(r#"^export ([a-zA-Z0-9_\-]+)="(.*)""#).unwrap();
-    emsdk_cmd(emsdk_path).args(&["construct_env"])
+    Command::new(emsdk_path).args(&["construct_env"])
         .current_dir(&temp_dir)
         .output()
         .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
@@ -183,8 +172,12 @@ fn ensure_installed() -> BTreeMap<String, String> {
     let mut target_dir = std::env::home_dir().unwrap_or_else(|| { panic!("failed to get home directory") });
     target_dir.push(".emsdk");
     let mut emsdk_path = target_dir.clone();
-    emsdk_path.push("emsdk");
-    if check_emsdk_install(&target_dir) {
+    if cfg!(target_os = "windows") {
+        emsdk_path.push("emsdk.bat");
+    } else {
+        emsdk_path.push("emsdk");
+    }
+    if check_emsdk_install(&emsdk_path) {
         print_prefix();
         eprintln!("found emsdk installation at {}", target_dir.display());
     } else {
@@ -206,15 +199,15 @@ fn ensure_installed() -> BTreeMap<String, String> {
     // well I guess that didn't work, so we'll have to actually update and activate our emsdk
     print_prefix();
     eprintln!("installing emcc with emsdk...");
-    emsdk_cmd(&emsdk_path).args(&["update"])
+    Command::new(&emsdk_path).args(&["update"])
         .current_dir(&target_dir)
         .status()
         .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
-    emsdk_cmd(&emsdk_path).args(&["install", "latest"])
+    Command::new(&emsdk_path).args(&["install", "latest"])
         .current_dir(&target_dir)
         .status()
         .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
-    emsdk_cmd(&emsdk_path).args(&["activate", "latest"])
+    Command::new(&emsdk_path).args(&["activate", "latest"])
         .current_dir(&target_dir)
         .output()
         .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
