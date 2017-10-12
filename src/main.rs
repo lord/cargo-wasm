@@ -93,7 +93,8 @@ fn install_emsdk(target_dir: &std::path::PathBuf) {
             .args(&[
                 "-nologo",
                 "-noprofile",
-                &format!(r#""& {{ Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::ExtractToDirectory('{}', '.'); }}""#, &temp_path.display())
+                "-command",
+                &format!("& {{ Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::ExtractToDirectory('{}', '.'); }}", &temp_path.display())
             ])
             .current_dir(target_dir)
             .status()
@@ -112,10 +113,20 @@ fn install_emsdk(target_dir: &std::path::PathBuf) {
     }
 }
 
+fn emsdk_cmd(emsdk_path: &std::path::PathBuf) -> Command {
+    if cfg!(target_os = "windows") {
+        let mut cmd = Command::new("call");
+        cmd.arg(format!("{}", emsdk_path.display()));
+        cmd
+    } else {
+        Command::new(emsdk_path)
+    }
+}
+
 fn get_env(emsdk_path: &std::path::PathBuf) -> BTreeMap<String, String> {
     let temp_dir = TempDir::new("cargo-wasmnow").unwrap_or_else(|_| { panic!("failed to create temp directory") });
     let re = Regex::new(r#"^export ([a-zA-Z0-9_\-]+)="(.*)""#).unwrap();
-    Command::new(emsdk_path).args(&["construct_env"])
+    emsdk_cmd(emsdk_path).args(&["construct_env"])
         .current_dir(&temp_dir)
         .output()
         .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
@@ -195,15 +206,15 @@ fn ensure_installed() -> BTreeMap<String, String> {
     // well I guess that didn't work, so we'll have to actually update and activate our emsdk
     print_prefix();
     eprintln!("installing emcc with emsdk...");
-    Command::new(&emsdk_path).args(&["update"])
+    emsdk_cmd(&emsdk_path).args(&["update"])
         .current_dir(&target_dir)
         .status()
         .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
-    Command::new(&emsdk_path).args(&["install", "latest"])
+    emsdk_cmd(&emsdk_path).args(&["install", "latest"])
         .current_dir(&target_dir)
         .status()
         .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
-    Command::new(&emsdk_path).args(&["activate", "latest"])
+    emsdk_cmd(&emsdk_path).args(&["activate", "latest"])
         .current_dir(&target_dir)
         .output()
         .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
