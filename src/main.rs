@@ -60,7 +60,7 @@ fn install_emsdk(target_dir: &std::path::PathBuf) {
         .stderr(Stdio::null())
         .spawn()
         .unwrap_or_else(|e| { panic!("{} failed to execute curl: {}", PREFIX, e) });
-    Command::new("tar").args(&["--strip-components=1", "-xvf", "-"])
+    Command::new("tar").args(&["--strip-components=1", "-zxvf", "-"])
         .stdin(cmd.stdout.unwrap_or_else(|| { panic!("{} failed to get curl output.", PREFIX) }))
         .current_dir(target_dir)
         .output()
