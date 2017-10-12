@@ -2,6 +2,9 @@
 name = "cargo-wasm"
 version = "0.1.0"
 authors = ["Robert Lord <robert@lord.io>"]
+description = "Run cargo commands with emcc automatically installed"
+license = "MIT"
+repository = "https://github.com/lord/cargo-wasm"
 
 [dependencies]
 tempdir = "0.3"
