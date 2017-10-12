@@ -14,5 +14,14 @@ cargo install cargo-wasm
 cargo wasm <insert cargo subcommand here>
 ```
 
-`cargo wasm` is a quick hack to ensure Emscripten is set up properly when running cargo commands. Running `cargo wasm build` automatically installs Emscripten if `emcc` is not already present, sets up the correct environment variables for the compiler, and then runs `cargo build --target=wasm32-unknown-emscripten`.
+`cargo wasm` is a quick hack to ensure Emscripten is set up properly when running cargo commands. Running `cargo wasm build` automatically installs Emscripten if `emcc` is not already present, sets up the correct environment variables for the compiler, uses `rustup` to install the standard library for Emscripten, and then runs `cargo build --target=wasm32-unknown-emscripten`.
 
+Automatic installation should work on macOS, Linux, and (soon) Windows. If you _ever_ encounter an error with `emcc`, please file an issue here — running `cargo wasm build` on a newly created `cargo new --bin foobar` project should _always_ work, or if not, provide helpful instructions on how to get it to work.
+
+## Known Bugs to Fix
+
+- [ ] doesn't work on Windows
+- [ ] https://github.com/kripken/emscripten/issues/5418
+  - we need to automatically
+- [ ] Fails if Python 3 is default `python`
+  - should run `python --version` to check version. If it's 3, check for `python2.7`, if that also fails, prompt user to install

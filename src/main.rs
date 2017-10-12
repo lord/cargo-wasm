@@ -11,6 +11,8 @@ use std::ffi::OsStr;
 use tempdir::TempDir;
 use regex::Regex;
 
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
 const HELP_STRING: &str = r#"Run cargo commands with the correct emscripten environment
 
 Usage:
@@ -162,7 +164,7 @@ fn main() {
     let mut args = std::env::args().skip(2).peekable();
     match args.peek().cloned() {
         None => {
-            println!("{}", HELP_STRING);
+            println!("cargo wasm version {}\n{}", VERSION, HELP_STRING);
             exit(0);
         },
         Some(subcommand) => {
