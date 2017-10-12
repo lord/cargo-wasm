@@ -5,3 +5,5 @@ authors = ["Robert Lord <robert@lord.io>"]
 
 [dependencies]
 tempdir = "0.3"
+regex = "0.2"
+
