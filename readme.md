@@ -3,7 +3,6 @@
   <br>
   <!-- <a href="https://travis-ci.org/lord/backtalk"><img src="https://travis-ci.org/lord/backtalk.svg?branch=master" alt="Build Status"></a> -->
   <a href="https://crates.io/crates/cargo-wasm"><img src="https://img.shields.io/crates/v/cargo-wasm.svg" alt="Crate Info"></a>
-  <a href="https://docs.rs/cargo-wasm"><img src="https://img.shields.io/badge/docs.rs-visit-brightgreen.svg" alt="Documentation"></a>
 </p>
 
 ```sh
