@@ -14,7 +14,7 @@ use regex::Regex;
 const EMSDK_URL: &str =
     "https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz";
 
-const PREFIX: &str = "\u{1b}[1;32m[wasmnow]\u{1b}[0m";
+const PREFIX: &str = "\u{1b}[1;32m[wasm setup]\u{1b}[0m";
 
 fn check_cmake_installed() {
     if let Err(e) = Command::new("cmake").args(&["--version"]).output() {

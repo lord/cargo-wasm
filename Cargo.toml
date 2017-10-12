@@ -1,5 +1,5 @@
 [package]
-name = "cargo-wasmnow"
+name = "cargo-wasm"
 version = "0.1.0"
 authors = ["Robert Lord <robert@lord.io>"]
 
