@@ -34,7 +34,8 @@ fn check_cmake_installed() {
 }
 
 fn check_rustup_installed() {
-    if let Err(e) = Command::new("rustup").args(&["--version"]).output() {
+    eprintln!("{} checking for wasm32 rustup target...", PREFIX);
+    if let Err(e) = Command::new("rustup").args(&["target", "add", "wasm32-unknown-emscripten"]).output() {
         if let std::io::ErrorKind::NotFound = e.kind() {
             eprintln!("{} rustup installation not found. Try installing from https://rustup.rs", PREFIX);
         } else {
