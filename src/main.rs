@@ -4,17 +4,29 @@ extern crate regex;
 use std::process::{Command, exit, Stdio};
 use std::fs::File;
 use std::io::prelude::*;
-use std::iter::Iterator;
+use std::iter::{Iterator};
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 
 use tempdir::TempDir;
 use regex::Regex;
 
+const HELP_STRING: &str = r#"Run cargo commands with the correct emscripten environment
+
+Usage:
+    cargo wasm [cargo subcommand] [<args>...]
+
+If the cargo subcommand is `build`, cargo wasm will automatically add
+`--target=wasm32-unknown-emscripten` to the arguments.
+
+If the Emscripten complier is not already found in the $PATH, cargo wasm will
+automatically install emsdk to ~/.emsdk, and then with it install the latest
+version of emcc."#;
+
 const EMSDK_URL: &str =
     "https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz";
 
-const PREFIX: &str = "\u{1b}[1;32m[wasm setup]\u{1b}[0m";
+const PREFIX: &str = "\u{1b}[1;32m  Setup wasm\u{1b}[0m";
 
 fn check_cmake_installed() {
     if let Err(e) = Command::new("cmake").args(&["--version"]).output() {
@@ -147,10 +159,22 @@ fn ensure_installed() -> BTreeMap<String, String> {
 }
 
 fn main() {
-    check_rustup_installed();
-    let env = ensure_installed();
-    let _ = Command::new("cargo")
-        .args(std::env::args().skip(2))
-        .envs(env.iter().map(|(k,v)| (OsStr::new(k), OsStr::new(v))))
-        .status();
+    let mut args = std::env::args().skip(2).peekable();
+    match args.peek().cloned() {
+        None => {
+            println!("{}", HELP_STRING);
+            exit(0);
+        },
+        Some(subcommand) => {
+            check_rustup_installed();
+            let env = ensure_installed();
+            let mut cmd_builder = Command::new("cargo");
+            cmd_builder.args(args);
+            cmd_builder.envs(env.iter().map(|(k,v)| (OsStr::new(k), OsStr::new(v))));
+            if subcommand == "build" {
+                cmd_builder.arg("--target=wasm32-unknown-emscripten");
+            }
+            let _ = cmd_builder.status();
+        }
+    }
 }
