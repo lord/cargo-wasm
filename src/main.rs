@@ -64,6 +64,10 @@ fn check_emsdk_install(target_dir: &std::path::PathBuf) -> bool {
 
 fn install_emsdk(target_dir: &std::path::PathBuf) {
     let _ = std::fs::create_dir(target_dir.clone());
+    let mut temp_path = TempDir::new("cargo-wasmnow2")
+        .unwrap_or_else(|_| { panic!("failed to create temp directory") })
+        .into_path();
+    temp_path.push("emsdk.zip");
     let mut emsdk_data = Vec::new();
     {
         let mut easy = Easy::new();
@@ -79,16 +83,33 @@ fn install_emsdk(target_dir: &std::path::PathBuf) {
        }).unwrap();
        transfer.perform().unwrap();
     }
-    let mut child = Command::new("tar").args(&["--strip-components=1", "-zxvf", "-"])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .current_dir(target_dir)
-        .spawn()
-        .unwrap_or_else(|e| { panic!("failed to execute tar: {}", e) });
+    if cfg!(target_os = "windows") {
+        {
+            let mut file = File::create(&temp_path).unwrap();
+            file.write_all(&emsdk_data).unwrap();
+            file.flush().unwrap();
+        }
+        Command::new("powershell.exe")
+            .args(&[
+                "-nologo",
+                "-noprofile",
+                &format!(r#""& {{ Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::ExtractToDirectory('{}', '.'); }}""#, &temp_path.display())
+            ])
+            .current_dir(target_dir)
+            .status()
+            .unwrap_or_else(|e| { panic!("failed to unzip file: {}", e) });
+    } else {
+        let mut child = Command::new("tar").args(&["--strip-components=1", "-zxvf", "-"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .current_dir(target_dir)
+            .spawn()
+            .unwrap_or_else(|e| { panic!("failed to execute tar: {}", e) });
 
-    child.stdin.as_mut().unwrap().write_all(&emsdk_data).unwrap();
-    child.wait_with_output().unwrap();
+        child.stdin.as_mut().unwrap().write_all(&emsdk_data).unwrap();
+        child.wait_with_output().unwrap();
+    }
 }
 
 fn get_env(emsdk_path: &std::path::PathBuf) -> BTreeMap<String, String> {
@@ -117,9 +138,9 @@ fn check_dependencies() {
             &["--version"],
             "cmake not found. Try installing with `brew install cmake` and rerunning?");
     } else if cfg!(target_os = "windows") {
-        check_installation("cmake",
-            &["--version"],
-            "cmake not found. Try installing with `brew install cmake` and rerunning?");
+        // check_installation("cmake",
+        //     &["--version"],
+        //     "cmake not found. Try installing with `brew install cmake` and rerunning?");
     } else {
         check_installation("gcc",
             &["--version"],
