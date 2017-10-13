@@ -118,12 +118,12 @@ fn get_env(emsdk_path: &std::path::PathBuf) -> BTreeMap<String, String> {
         newpath.pop();
         newpath.push("emsdk_env.bat");
         Command::new(emsdk_path).output()
-            .unwrap_or_else(|e| panic!("failed to get emsdk env: {}", e))
+            .unwrap_or_else(|e| panic!("failed to get emsdk env: {}", e));
 
         BTreeMap::new()
     } else {
         let temp_dir = TempDir::new("cargo-wasmnow").unwrap_or_else(|_| { panic!("failed to create temp directory") });
-        let re = Regex::new(r#"^export ([a-zA-Z0-9_\-]+)="(.*)""#).unwrap();
+        let re = Regex::new(r#"^export ([a-zA-Z0-9_\-]+)="(.*)""#).expect("Failed to construct regex");
         Command::new(emsdk_path).args(&["construct_env"])
             .current_dir(&temp_dir)
             .output()
@@ -131,11 +131,11 @@ fn get_env(emsdk_path: &std::path::PathBuf) -> BTreeMap<String, String> {
         let mut env_file = temp_dir.into_path();
         env_file.push("emsdk_set_env.sh");
         let mut contents = String::new();
-        let _ = File::open(env_file).unwrap().read_to_string(&mut contents).unwrap();
+        let _ = File::open(env_file).expect("Failed to open env file").read_to_string(&mut contents).expect("Failed to read env file");
         let env_lines: Vec<&str> = contents.split("\n").filter(|line| line.len() > 0).collect();
         let mut res = BTreeMap::new();
         for line in env_lines {
-            let caps = re.captures(line).unwrap();
+            let caps = re.captures(line).expect("Failed to use env file");
             res.insert(caps[1].to_string(), caps[2].to_string());
         }
         res
