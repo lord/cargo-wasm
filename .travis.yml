@@ -1,10 +1,8 @@
 language: rust
 addons:
   firefox: "45.4.0esr"
-  apt:
-    packages:
-    - cmake
 before_install:
+  - which cmake
   - mkdir $HOME/usr
   - export PATH="$HOME/usr/bin:$PATH"
   - wget https://cmake.org/files/v3.7/cmake-3.7.2-Linux-x86_64.sh
