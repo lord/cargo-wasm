@@ -1,39 +1,54 @@
+# travis.yml adapted from irbis-labs/rust-webplatform
 language: rust
-addons:
-  firefox: "45.4.0esr"
+
+rust: stable
+
+env:
+  global:
+    # EM_USE_GLOBAL_CACHE=1 tells emscripten to use precompiled libraries from
+    # the emscripten-libs-asmjs package. This speeds up the build significantly.
+    - EM_USE_GLOBAL_CACHE=1
+
 before_install:
-  # - mkdir $HOME/usr
-  # - export PATH="$HOME/usr/bin:$PATH"
-  # - wget https://cmake.org/files/v3.7/cmake-3.7.2-Linux-x86_64.sh
-  # - chmod +x cmake-3.7.2-Linux-x86_64.sh
-  # - ./cmake-3.7.2-Linux-x86_64.sh --prefix=$HOME/usr --exclude-subdir --skip-license
-  # - export PATH=$PATH:$HOME/usr
-  # - which cmake
+  - rustup target add wasm32-unknown-emscripten
 
-  # install and run geckodriver
-  - wget https://github.com/mozilla/geckodriver/releases/download/v0.11.1/geckodriver-v0.11.1-linux64.tar.gz
-  - mkdir geckodriver
-  - tar -xzf geckodriver-v0.11.1-linux64.tar.gz -C geckodriver
-  - export PATH=$PATH:$PWD/geckodriver
-  - geckodriver &
+  # Install geckodriver (needed to run tests in a real firefox browser)
+  - wget https://github.com/mozilla/geckodriver/releases/download/v0.19.0/geckodriver-v0.19.0-linux64.tar.gz
+  - tar -xvzf geckodriver-v0.19.0-linux64.tar.gz
+  - chmod +x geckodriver
+  - sudo mv geckodriver /usr/local/bin/
 
-  # install alpine linux chroot
+  # Install Emscripten. Default ubuntu repos contain a very old Emscripten version
+  # that don't support WebAssembly at all. Installing it via SDK scripts perform
+  # local LLVM build that is very slow. So we just install a new alpine system in
+  # a local dir, and then use it via chroot. There is an automated script for this
+  # task: alpine-chroot-install.
+  #
+  # Download and verify alpine-chroot-install script.
   - wget https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/v0.6.0/alpine-chroot-install
       && echo 'a827a4ba3d0817e7c88bae17fe34e50204983d1e  alpine-chroot-install' | sha1sum -c
+
+  # Install Alpine Linux into /alpine and prepare there a chroot environment;
+  # add testing repository and install packages for Emscripten.
   - sudo sh alpine-chroot-install -b v3.6
       -r 'https://nl.alpinelinux.org/alpine/edge/testing'
-      -p 'emscripten emscripten-libs-asmjs closure-compiler'
+      -p 'emscripten emscripten-libs-wasm binaryen'
       -k 'CI TRAVIS_.* EM_.*'
+  # Alias `emcc` to chrooted one
   - echo -e '#!/bin/bash\n/alpine/enter-chroot -u $USER emcc $@' > emcc
   - chmod +x emcc
   - sudo mv emcc /usr/local/bin/
+  # mount /home/travis to /alpine/home/travis
   - mkdir -p /alpine/home/travis
   - sudo mount --bind /home/travis /alpine/home/travis
-install:
-  - cargo install --verbose
+
 before_script:
+  # Creating a fake screen. Need to run firefox
   - export DISPLAY=:99.0
   - sh -e /etc/init.d/xvfb start
-  - sleep 1
+  - sleep 1 # giv exvfb some time to start
+
 script:
-  - cd test_project && cargo wasm test
+  - cargo install
+  - cd test_project
+  - cargo wasm test
