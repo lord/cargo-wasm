@@ -31,5 +31,9 @@ before_install:
   - sudo mount --bind /home/travis /alpine/home/travis
 install:
   - cargo install --verbose
+before_script:
+  - export DISPLAY=:99.0
+  - sh -e /etc/init.d/xvfb start
+  - sleep
 script:
   - cd test_project && cargo wasm test
