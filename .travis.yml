@@ -51,6 +51,6 @@ before_script:
   - geckodriver &
 
 script:
-  - cargo install
+  - cargo install -f
   - cd test_project
   - cargo wasm test
