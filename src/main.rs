@@ -66,7 +66,9 @@ fn run_tests() {
                     let exit_status = json_vals.next().expect("no exit status found");
                     if let Json::Boolean(true) = runtime_exited {
                         drop(c);
-                        exit(exit_status.as_i64().expect("exit status wasn't a number") as i32);
+                        print_prefix();
+                        let stat = exit_status.as_i64().unwrap() as i32;
+                        eprintln!("tests finished with status: {}", stat);
                     } else {
                         run_check(core_handle, c);
                     }
