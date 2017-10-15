@@ -2,18 +2,33 @@ language: rust
 addons:
   firefox: "45.4.0esr"
 before_install:
-  - mkdir $HOME/usr
-  - export PATH="$HOME/usr/bin:$PATH"
-  - wget https://cmake.org/files/v3.7/cmake-3.7.2-Linux-x86_64.sh
-  - chmod +x cmake-3.7.2-Linux-x86_64.sh
-  - ./cmake-3.7.2-Linux-x86_64.sh --prefix=$HOME/usr --exclude-subdir --skip-license
-  - export PATH=$PATH:$HOME/usr
-  - which cmake
+  # - mkdir $HOME/usr
+  # - export PATH="$HOME/usr/bin:$PATH"
+  # - wget https://cmake.org/files/v3.7/cmake-3.7.2-Linux-x86_64.sh
+  # - chmod +x cmake-3.7.2-Linux-x86_64.sh
+  # - ./cmake-3.7.2-Linux-x86_64.sh --prefix=$HOME/usr --exclude-subdir --skip-license
+  # - export PATH=$PATH:$HOME/usr
+  # - which cmake
+
+  # install and run geckodriver
   - wget https://github.com/mozilla/geckodriver/releases/download/v0.11.1/geckodriver-v0.11.1-linux64.tar.gz
   - mkdir geckodriver
   - tar -xzf geckodriver-v0.11.1-linux64.tar.gz -C geckodriver
   - export PATH=$PATH:$PWD/geckodriver
   - geckodriver &
+
+  # install alpine linux chroot
+  - wget https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/v0.6.0/alpine-chroot-install
+  && echo 'a827a4ba3d0817e7c88bae17fe34e50204983d1e  alpine-chroot-install' | sha1sum -c
+  - sudo sh alpine-chroot-install -b v3.6
+      -r 'https://nl.alpinelinux.org/alpine/edge/testing'
+      -p 'emscripten emscripten-libs-asmjs closure-compiler'
+      -k 'CI TRAVIS_.* EM_.*'
+  - echo -e '#!/bin/bash\n/alpine/enter-chroot -u $USER emcc $@' > emcc
+  - chmod +x emcc
+  - sudo mv emcc /usr/local/bin/
+  - mkdir -p /alpine/home/travis
+  - sudo mount --bind /home/travis /alpine/home/travis
 install:
   - cargo install --verbose
 script:
