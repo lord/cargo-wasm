@@ -1,6 +1,6 @@
 [package]
 name = "cargo-wasm"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Robert Lord <robert@lord.io>"]
 description = "Run cargo commands with emcc automatically installed"
 license = "MIT"
