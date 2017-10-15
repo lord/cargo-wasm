@@ -6,21 +6,19 @@ extern crate fantoccini_stable;
 extern crate tokio_core;
 extern crate futures;
 extern crate rustc_serialize;
+extern crate tiny_http;
 
 mod install;
 use install::{print_prefix, ensure_installed};
 
+mod testserver;
+
 use std::sync::{Arc, Mutex};
-use std::process::{Command, exit, Stdio};
-use std::fs::File;
-use std::io::prelude::*;
+use std::process::{Command, exit};
 use std::iter::{Iterator};
-use std::collections::BTreeMap;
+
 use std::ffi::OsStr;
 
-use tempdir::TempDir;
-use regex::Regex;
-use curl::easy::Easy;
 use fantoccini_stable::Client as WebClient;
 use futures::Future;
 use rustc_serialize::json::Json;
@@ -40,13 +38,21 @@ automatically install emsdk to ~/.emsdk, and then with it install the latest
 version of emcc."#;
 
 fn run_tests() {
+    let mut args = std::env::args().skip(2);
     let exit_value = Arc::new(Mutex::new(1 as i32));
     let exit_value2 = exit_value.clone();
     let env = ensure_installed();
+    let _ = Command::new("cargo")
+        .args(args)
+        .arg("--no-run")
+        .envs(env.iter().map(|(k,v)| (OsStr::new(k), OsStr::new(v))))
+        .arg("--target=wasm32-unknown-emscripten")
+        .status();
+    let run_server = testserver::start_server();
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let addr = std::env::var("CARGO_WASM_WEBCLIENT_URL").unwrap_or("http://localhost:4444".to_string());
     let (c, fin) = WebClient::new(&addr, &core.handle());
-    let mut c = match core.run(c) {
+    let c = match core.run(c) {
         Ok(v) => v,
         Err(e) => {
             print_prefix();
@@ -106,6 +112,7 @@ fn run_tests() {
     }
     // and wait for cleanup to finish
     core.run(fin).unwrap();
+    *(run_server.lock().unwrap()) = false;
     exit(exit_value2.lock().unwrap().clone());
 }
 

@@ -11,8 +11,6 @@ use std::ffi::OsStr;
 use tempdir::TempDir;
 use regex::Regex;
 use curl::easy::Easy;
-use fantoccini_stable::Client as WebClient;
-use futures::Future;
 
 pub fn print_prefix() {
     let mut t = term::stderr().unwrap();
