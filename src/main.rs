@@ -38,16 +38,19 @@ automatically install emsdk to ~/.emsdk, and then with it install the latest
 version of emcc."#;
 
 fn run_tests() {
-    let mut args = std::env::args().skip(2);
+    let args = std::env::args().skip(2);
     let exit_value = Arc::new(Mutex::new(1 as i32));
     let exit_value2 = exit_value.clone();
     let env = ensure_installed();
-    let _ = Command::new("cargo")
+    Command::new("cargo")
         .args(args)
         .arg("--no-run")
         .envs(env.iter().map(|(k,v)| (OsStr::new(k), OsStr::new(v))))
         .arg("--target=wasm32-unknown-emscripten")
-        .status();
+        .status()
+        .unwrap_or_else(|_| {
+            exit(1);
+        });
     let run_server = testserver::start_server();
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let addr = std::env::var("CARGO_WASM_WEBCLIENT_URL").unwrap_or("http://localhost:4444".to_string());
@@ -75,7 +78,7 @@ fn run_tests() {
                     let exit_status = json_vals.next().expect("no exit status found");
                     let logs = json_vals
                         .next().expect("no test log stream found")
-                        .into_array().unwrap();
+                        .into_array().expect("test log stream is not array");
                     for log in logs {
                         if let Json::String(line) = log {
                             eprintln!("{}", line);
@@ -83,10 +86,10 @@ fn run_tests() {
                     }
                     if let Json::Boolean(true) = runtime_exited {
                         drop(c);
-                        let stat = exit_status.as_i64().unwrap() as i32;
+                        let stat = exit_status.as_i64().expect("failed to get exit status") as i32;
                         print_prefix();
                         eprintln!("tests finished with status: {}", stat);
-                        let mut exit_value = exit_value.lock().unwrap();
+                        let mut exit_value = exit_value.lock().expect("failed to get exit value");
                         *exit_value = stat;
                     } else {
                         run_check(core_handle, c, exit_value);
@@ -99,7 +102,7 @@ fn run_tests() {
         let core_handle = core.handle();
         // now let's set up the sequence of steps we want the browser to take
         // first, go to the Wikipedia page for Foobar
-        let f = c.goto("http://localhost:9292/index.html")
+        let f = c.goto("http://localhost:7777/")
             .and_then(move |_| {
                 print_prefix();
                 eprintln!("Running tests...");
@@ -111,9 +114,9 @@ fn run_tests() {
         core.run(f).expect("Failed to run core");
     }
     // and wait for cleanup to finish
-    core.run(fin).unwrap();
-    *(run_server.lock().unwrap()) = false;
-    exit(exit_value2.lock().unwrap().clone());
+    core.run(fin).expect("failed to run core");
+    *(run_server.lock().expect("mutex unlock failed")) = false;
+    exit(exit_value2.lock().expect("mutex unlock failed").clone());
 }
 
 fn main() {
