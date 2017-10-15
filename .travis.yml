@@ -17,6 +17,7 @@ before_install:
   - tar -xvzf geckodriver-v0.19.0-linux64.tar.gz
   - chmod +x geckodriver
   - sudo mv geckodriver /usr/local/bin/
+  - geckodriver &
 
   # Install Emscripten. Default ubuntu repos contain a very old Emscripten version
   # that don't support WebAssembly at all. Installing it via SDK scripts perform
