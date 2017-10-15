@@ -142,9 +142,9 @@ fn check_dependencies() {
         check_installation("cmake",
             &["--version"],
             "gcc not found. Try installing with `sudo apt-get install cmake` and rerunning?");
-        check_installation("nodejs",
-            &["--version"],
-            "nodejs not found. Try installing with `sudo apt-get install nodejs` and rerunning?");
+        // check_installation("nodejs",
+        //     &["--version"],
+        //     "nodejs not found. Try installing with `sudo apt-get install nodejs` and rerunning?");
     }
 }
 
