@@ -10,6 +10,7 @@ extern crate rustc_serialize;
 mod install;
 use install::{print_prefix, ensure_installed};
 
+use std::sync::{Arc, Mutex};
 use std::process::{Command, exit, Stdio};
 use std::fs::File;
 use std::io::prelude::*;
@@ -39,6 +40,8 @@ automatically install emsdk to ~/.emsdk, and then with it install the latest
 version of emcc."#;
 
 fn run_tests() {
+    let exit_value = Arc::new(Mutex::new(1 as i32));
+    let exit_value2 = exit_value.clone();
     let env = ensure_installed();
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let addr = std::env::var("CARGO_WASM_WEBCLIENT_URL").unwrap_or("http://localhost:4444".to_string());
@@ -54,9 +57,9 @@ fn run_tests() {
 
     {
         // we want to have a reference to c so we can use it in the and_thens below
-        fn run_check(core: tokio_core::reactor::Handle, c: WebClient) {
+        fn run_check(core: tokio_core::reactor::Handle, c: WebClient, exit_value: Arc<Mutex<i32>>) {
             let core_handle = core.clone();
-            let f = c.execute("return [runtimeExited, EXITSTATUS]", Vec::new())
+            let f = c.execute("var res = [window.runtimeExited, window.EXITSTATUS, window.TEST_LOGS]; window.TEST_LOGS=[]; return res;", Vec::new())
                 .then(move |res| {
                     let mut json_vals = match res {
                         Ok(Json::Array(a)) => a.into_iter(),
@@ -64,13 +67,23 @@ fn run_tests() {
                     };
                     let runtime_exited = json_vals.next().expect("no runtime exit status found");
                     let exit_status = json_vals.next().expect("no exit status found");
+                    let logs = json_vals
+                        .next().expect("no test log stream found")
+                        .into_array().unwrap();
+                    for log in logs {
+                        if let Json::String(line) = log {
+                            eprintln!("{}", line);
+                        }
+                    }
                     if let Json::Boolean(true) = runtime_exited {
                         drop(c);
-                        print_prefix();
                         let stat = exit_status.as_i64().unwrap() as i32;
+                        print_prefix();
                         eprintln!("tests finished with status: {}", stat);
+                        let mut exit_value = exit_value.lock().unwrap();
+                        *exit_value = stat;
                     } else {
-                        run_check(core_handle, c);
+                        run_check(core_handle, c, exit_value);
                     }
                     Ok(())
                 });
@@ -82,7 +95,9 @@ fn run_tests() {
         // first, go to the Wikipedia page for Foobar
         let f = c.goto("http://localhost:9292/index.html")
             .and_then(move |_| {
-                run_check(core_handle, c);
+                print_prefix();
+                eprintln!("Running tests...");
+                run_check(core_handle, c, exit_value);
                 Ok(())
             });
 
@@ -91,6 +106,7 @@ fn run_tests() {
     }
     // and wait for cleanup to finish
     core.run(fin).unwrap();
+    exit(exit_value2.lock().unwrap().clone());
 }
 
 fn main() {
