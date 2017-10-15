@@ -19,7 +19,7 @@ before_install:
 
   # install alpine linux chroot
   - wget https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/v0.6.0/alpine-chroot-install
-  && echo 'a827a4ba3d0817e7c88bae17fe34e50204983d1e  alpine-chroot-install' | sha1sum -c
+      && echo 'a827a4ba3d0817e7c88bae17fe34e50204983d1e  alpine-chroot-install' | sha1sum -c
   - sudo sh alpine-chroot-install -b v3.6
       -r 'https://nl.alpinelinux.org/alpine/edge/testing'
       -p 'emscripten emscripten-libs-asmjs closure-compiler'
