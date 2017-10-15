@@ -33,6 +33,7 @@ Automatic installation should work on macOS, Linux, and (soon) Windows. If you _
 ## Known Bugs to Fix
 
 - [ ] doesn't work on Windows
+- [ ] doesn't work in travis-ci
 - [ ] https://github.com/kripken/emscripten/issues/5418
   - we need to automatically
 - [ ] Fails if Python 3 is default `python`
