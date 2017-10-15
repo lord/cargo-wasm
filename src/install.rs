@@ -197,11 +197,11 @@ pub fn ensure_installed() -> BTreeMap<String, String> {
         .current_dir(&target_dir)
         .status()
         .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
-    Command::new(&emsdk_path).args(&["install", "sdk-incoming-64bit"])
+    Command::new(&emsdk_path).args(&["install", "sdk-1.37.22-64bit"])
         .current_dir(&target_dir)
         .status()
         .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
-    Command::new(&emsdk_path).args(&["activate", "sdk-incoming-64bit"])
+    Command::new(&emsdk_path).args(&["activate", "sdk-1.37.22-64bit"])
         .current_dir(&target_dir)
         .output()
         .unwrap_or_else(|e| { panic!("failed to execute emsdk: {}", e) });
