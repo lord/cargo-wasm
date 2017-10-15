@@ -1,0 +1,6 @@
+[package]
+name = "test_project"
+version = "0.1.0"
+authors = ["Robert Lord <robert@lord.io>"]
+
+[dependencies]
