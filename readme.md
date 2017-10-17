@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/lord/img/master/logo-cargowasm.png" alt="cargo wasm: Easy Rust to Webassembly" width="226">
   <br>
-  <!-- <a href="https://travis-ci.org/lord/backtalk"><img src="https://travis-ci.org/lord/backtalk.svg?branch=master" alt="Build Status"></a> -->
+  <a href="https://travis-ci.org/lord/cargo-wasm"><img src="https://travis-ci.org/lord/cargo-wasm.svg?branch=master" alt="Build Status"></a>
   <a href="https://crates.io/crates/cargo-wasm"><img src="https://img.shields.io/crates/v/cargo-wasm.svg" alt="Crate Info"></a>
 </p>
 
